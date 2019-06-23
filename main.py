@@ -84,7 +84,7 @@ class Main:
 					if enemy.hitpoints > 0:
 						break
 				else:
-					print("The fight was won!")
+					print("\nThe fight was won!")
 					print("You gained experience!") # implement exp
 					return 0
 
@@ -137,13 +137,15 @@ class Main:
 
 						else:
 							if hitcheck(fighter.accuracy):
-								print(fighter.name, "hit you for", fighter.strength, "damage.")
-								if fighter.strength >= self.player.hitpoints:
-									return 1 # playerdeath
+								if fighter.strength >= self.player.getArmor():
+									print(fighter.name, "hit you for", fighter.strength, "damage.")
+									if fighter.strength >= self.player.hitpoints:
+										return 1 # playerdeath
+									else:
+										self.player.hitpoints -= (fighter.strength - (self.player.getArmor()/2))
+										print("You have", self.player.hitpoints, "HP left.")
 								else:
-									if fighter.strength >= self.player.getArmor():
-									self.player.hitpoints -= fighter.strength
-									print("You have", self.player.hitpoints, "HP left.")
+									print("")
 							else:
 								print(fighter.name, "missed the attack on you.")
 					
@@ -190,7 +192,6 @@ class Main:
 						self.fight_roster += [npc]
 
 				if self.fight_roster:
-					print(self.fight_roster)
 					self.map.current.introtext_hostile()
 					if self.fight() != 0:
 						self.playerdeath()
@@ -435,7 +436,7 @@ class Main:
 			print("check your 'bag' for equippable gear and weapons!")
 
 	def choiceStats(self):
-		print("Name: {}\nLevel: {}\nHP: {}\nMP: {}\nStrength: {}".format(self.player.name, self.player.level, self.player.hitpoints, self.player.manapoints, self.player.strength))
+		print("Name: {}\nLevel: {}\nHP: {}\nMP: {}\nStrength: {}\nAccuracy: {}".format(self.player.name, self.player.level, self.player.hitpoints, self.player.manapoints, self.player.strength, self.player.accuracy))
 		print("\nHead Armor:")
 		self.inspectprint(self.player.head)
 		print("\nChest Armor:")
