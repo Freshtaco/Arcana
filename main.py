@@ -13,7 +13,9 @@ class Main:
 		self.map = 0
 		self.tile = (0,0)
 		self.tile_loot = ""
+		self.npc_loot = []
 		self.game_choice = ""
+		self.equip_types = {}
 
 		self.menu_text = ("\nWelcome to Arcana!\n"
 						"What would you like to do?\n\n"
@@ -135,33 +137,25 @@ class Main:
 								if " ".join(self.game_choice[1:]) == npc.name:
 									print("you loot", npc.name, "and find:")
 									if npc.bag:
-										for item in npc.bag:
-											
-											try: # try except to check for single or multi items
-											
-												print(item.name)
-												if input("Do you want to loot {} ?\n>:".format(item.name)).lower() in "yes":
-													for player_item in self.player.bag:
-														if player_item.name == "Empty":
-															self.player.bag[self.player.bag.index(player_item)] = item
-															npc.bag.pop(npc.bag.index(item))
-															break
-													else:
-														print("your bag is full!")
-														print("use 'throw' to throw away things from your bag")
-											
-											except AttributeError:
 
-												for loot_obj in item:
-													if input("Do you want to loot {} ?\n>:".format(loot_obj.name)).lower() in "yes":
-														for player_item in self.player.bag:
-															if player_item.name == "Empty":
-																self.player.bag[self.player.bag.index(player_item)] = item
-																npc.bag.pop(npc.bag.index(loot_obj))
-																break
-														else:
-															print("your bag is full!")
-															print("use 'throw' to throw away things from your bag")
+										self.npc_loot = npc.bag.copy()
+										for item in self.npc_loot:
+
+											print("\n", item.name)
+											if input("Do you want to loot {} ?\n>:".format(item.name)).lower() in "yes":
+												for player_item in self.player.bag:
+													if player_item.name == "Empty":
+														self.player.bag[self.player.bag.index(player_item)] = item
+														npc.bag.pop(npc.bag.index(item))
+														print("You looted", item.name, "!")
+														break
+												else:
+													print("your bag is full!")
+													print("use 'throw' to throw away things from your bag")
+													break
+										#npc.bag = self.npc_loot
+										self.npc_loot = []
+
 									else:
 										print("nothing to loot from", npc.name)
 
@@ -173,7 +167,7 @@ class Main:
 											self.tile_loot = random.choice(self.map.current.items)
 											self.player.bag[self.player.bag.index(player_item)] = self.tile_loot
 											print("you found {}".format(self.tile_loot.name))
-											self.map.current.items.pop(self.player.bag.index(self.tile_loot))
+											self.map.current.items.pop(self.map.current.items.index(self.tile_loot))
 											self.map.current.tile_searched = True
 											break
 									else:
@@ -186,10 +180,11 @@ class Main:
 							else:
 								print("You already searched this tile")
 						
-						if (self.game_choice[1] not in [npc.name for npc in self.map.current.npc_list]) and (self.game_choice[1] != "tile"):
+						if (" ".join(self.game_choice[1:]) not in [npc.name for npc in self.map.current.npc_list]) and (self.game_choice[1] != "tile"):
 							print("no lootable object called", self.game_choice[1])
 
-					except IndexError:
+					except IndexError as e:
+						#print(e.message)
 						print("'loot' requires an additional argument:")
 						print("E.g.: loot (thing to loot or pick up)")
 
@@ -199,6 +194,7 @@ class Main:
 							if " ".join(self.game_choice[1:]) == item.name.lower():
 								if item.name != "Empty":
 									self.map.current.items.append(item)
+									print("you threw away", item.name)
 									self.player.bag[self.player.bag.index(item)] = Item.Empty()
 									break
 						else:
@@ -243,15 +239,16 @@ class Main:
 										for player_item in self.player.bag:
 											if player_item.type == "empty":
 												self.player.bag[self.player.bag.index(player_item)] = self.equip_types[item.type]
-												if player_item.type == "head":
-													self.player.head = player_item
-												elif player_item.type == "chest":
-													self.player.chest = player_item
-												elif player_item.type == "pants":
-													self.player.pants = player_item
-												elif player_item.type == "weapon":
-													self.player.weapon = player_item
+												if item.type == "head":
+													self.player.head = item
+												elif item.type == "chest":
+													self.player.chest = item
+												elif item.type == "pants":
+													self.player.pants = item
+												elif item.type == "weapon":
+													self.player.weapon = item
 												print(player_item.name, "equipped successfully")
+												self.player.bag[self.player.bag.index(item)] = Item.Empty()
 												break
 										else:
 											print("no room in bag for equipment change!")
@@ -302,7 +299,7 @@ class NPC:
 		self.name = name
 
 		self.bag = []
-		self.bag.append(items)
+		self.bag.extend(items)
 		
 		# -1 = Evil
 		# 0 = Neutral
@@ -373,7 +370,7 @@ class Map:
 
 		commands = ["look", "move", "bag", "loot", "throw", "inspect","equip", "stats", "exit"]
 		dagger = Item.Weapon("Goblin Dagger", 5, 15, 1, "A dagger made from a tiger's tooth.\nThe hilt is wrapped in leather.")
-		goblin = NPC(0, 0, 2, "goblin", dagger, -1, "A dead goblin.\nHe's completely fried.")
+		goblin = NPC(0, 0, 2, "goblin", [dagger], -1, "A dead goblin.\nHe's completely fried.")
 		helmet = Item.Armor("head", "Frying Pan", 2, 1, "It's a frying pan and a helmet!\nHow convenient.")
 		npc_list = [goblin]
 		items = [helmet]
@@ -413,7 +410,7 @@ class Map:
 
 	class Map01:
 		commands = ["look", "move", "bag", "loot", "throw", "inspect", "equip", "stats", "exit"]
-		robe = Item.Armor("chest", "white robe", 5, 1, "A white robe.\nnot too white though.")
+		robe = Item.Armor("chest", "White Robe", 5, 1, "A white robe.\nnot too white though.")
 		sword = Item.Weapon("Butterknife", 7, 20, 0.25, "A butterknife, handy.")
 		treasure_chest = NPC(10, 0, 1, "treasure chest", [robe, sword], 0, "a small treasure chest")
 		items = []
