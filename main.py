@@ -44,6 +44,7 @@ class Main:
 				self.gameloop()
 			elif self.menu_choice == "2":
 				self.loadgame()
+				self.gameloop()
 			elif self.menu_choice == "0":
 				exit("Exiting Arcana...")
 				
@@ -61,6 +62,15 @@ class Main:
 
 	def playerdeath(self):
 		print("you died!")
+
+	def durabilitymanager(self, item):
+		if random.randint(0, 100) >= item.durability:
+			item.durability_real -= 1
+			for equip in self.equip_types.values():
+				if equip.durability_real == 0:
+					print("Your", equip.name, "broke!")
+					equip = Item.Empty()
+
 
 	def fight(self):
 
@@ -123,7 +133,10 @@ class Main:
 										else:
 											try:
 												self.fight_opponent = self.fight_roster_enemies[int(self.fight_choice_group)-1]
-												print("you deal", )
+												print("you attack and deal", fighter.getAttack(), "damage")
+												self.fight_opponent.hitpoints -= fighter.getAttack()
+												self.durabilitymanager(self.fighter.weapon)
+												print("{}({}) has {} HP left".format(self.fight_opponent, self.fight_choice_group, self.fight_opponent.hitpoints))
 												break
 											except:
 												print("invalid option '{}'".format(self.fight_choice_group))
@@ -132,6 +145,7 @@ class Main:
 									print("You attack and deal", fighter.getAttack(), "damage")
 									self.fight_roster_enemies[0].hitpoints -= fighter.getAttack()
 									print(self.fight_roster_enemies[0].name, "has", self.fight_roster_enemies[0].hitpoints, "HP left")
+									self.durabilitymanager(fighter.weapon)
 								else:
 									print("You attacked but missed your target.")
 
@@ -142,10 +156,11 @@ class Main:
 									if fighter.strength >= self.player.hitpoints:
 										return 1 # playerdeath
 									else:
-										self.player.hitpoints -= (fighter.strength - (self.player.getArmor()/2))
+										self.player.hitpoints -= (fighter.strength - int(round(self.player.getArmor()/2)))
 										print("You have", self.player.hitpoints, "HP left.")
 								else:
-									print("")
+									print(fighter.name, "hit you but your armor saved you")
+									self.durabilitymanager()
 							else:
 								print(fighter.name, "missed the attack on you.")
 					
@@ -171,7 +186,7 @@ class Main:
 				print(item.description)
 				return 1
 		elif item.type in ["head", "pants", "chest"]:
-			print("Name: {}\nArmor Rating: {}\nWeight: {}\n{}".format(item.name, item.armor, item.weight, item.description))
+			print("Name: {}\nArmor Rating: {}\nWeight: {}\nDurability: {}/{}\n{}".format(item.name, item.armor, item.weight, item.durability_real, item.durability, item.description))
 			return 1
 		elif item.type == "empty":
 			print("Nothing")
@@ -180,6 +195,13 @@ class Main:
 			return 0
 
 	def gameloop(self):
+
+		self.equip_types = {
+			"head": self.player.head,
+			"chest": self.player.chest,
+			"pants": self.player.pants,
+			"weapon": self.player.weapon
+		}
 
 		while True:
 			
@@ -197,13 +219,6 @@ class Main:
 						self.playerdeath()
 				else:
 					self.map.current.introtext()
-
-			self.equip_types = {
-				"head": self.player.head,
-				"chest": self.player.chest,
-				"pants": self.player.pants,
-				"weapon": self.player.weapon
-			}
 
 			self.game_choice = input("\n>:")
 			self.game_choice = self.game_choice.split(" ")
@@ -507,7 +522,7 @@ class Item:
 
 	class Armor:
 
-		def __init__(self, armor_type, name, armor, weight, description):
+		def __init__(self, armor_type, name, armor, weight, durability, description):
 
 			# equippable types:
 			# head, chest pants, weapon
@@ -516,6 +531,8 @@ class Item:
 			self.name = name
 			self.armor = armor
 			self.weight = weight
+			self.durability = durability
+			self.durability_real = durability
 			self.description = description
 
 	class Empty:
@@ -544,7 +561,7 @@ class Map:
 		commands = ["look", "move", "bag", "loot", "throw", "inspect","equip", "stats", "exit"]
 		dagger = Item.Weapon("Goblin Dagger", 5, 15, 1, "A dagger made from a tiger's tooth.\nThe hilt is wrapped in leather.")
 		goblin = NPC(0, 0, 0, 0, 2, 3,"goblin", [dagger], -1, "A dead goblin.\nHe's completely fried.")
-		helmet = Item.Armor("head", "Frying Pan", 2, 1, "It's a frying pan and a helmet!\nHow convenient.")
+		helmet = Item.Armor("head", "Frying Pan", 2, 1, 15, "It's a frying pan and a helmet!\nHow convenient.")
 		npc_list = [goblin]
 		items = [helmet]
 		tile_searched = False
@@ -606,9 +623,9 @@ class Map:
 
 	class Map01:
 		commands = ["look", "move", "bag", "loot", "throw", "inspect", "equip", "stats", "exit"]
-		#robe = Item.Armor("chest", "White Robe", 5, 1, "A white robe.\nnot too white though.")
+		#robe = Item.Armor("chest", "White Robe", 5, 1, 15, "A white robe.\nnot too white though.")
 		#sword = Item.Weapon("Butterknife", 7, 20, 0.25, "A butterknife, handy.")
-		#pants = Item.Armor("pants", "Kilt", 2, 0.75, "A Kilt?\nHow did this get here?")
+		#pants = Item.Armor("pants", "Kilt", 2, 0.75, 15,"A Kilt?\nHow did this get here?")
 		#treasure_chest = NPC(10, 0, 0, 1, "treasure chest", [robe, sword, pants], 0, "a small treasure chest")
 		items = []
 		npc_list = []
@@ -656,7 +673,7 @@ class Map:
 	class Map02:
 		
 		commands = ["look", "move", "bag", "loot", "throw", "inspect", "equip", "stats", "exit"]
-		slingshot = Item.Weapon("Crude Slingshot", 2, 10, 1, "A crude slingshot taken from a ravaging goblin.")
+		slingshot = Item.Weapon("Crude Slingshot", 2, 10, 1, "A crude slingshot made by a goblin.")
 		goblin = NPC(10, 2, 2, 2, 2, 50, "goblin", [slingshot], -1, "A lone goblin.\nThey are usually in packs,\nthe others must have died.")
 		#hut = NPC()
 		items = []
@@ -696,9 +713,10 @@ class Player:
 		self.bag = [Item.Empty()]*6
 
 		self.head = Item.Empty()
-		self.chest = Item.Armor("chest","Tattered Shirt", 1, 0.5, "A dirty old shirt.\nBetter than nothing?")
-		self.pants = Item.Armor("pants", "Old Pants", 1, 0.5, "Old pants made from linen.\nThey're dirty.")
-		self.weapon = Item.Empty()
+		self.chest = Item.Armor("chest","Tattered Shirt", 1, 0.5, 10, "A dirty old shirt.\nBetter than nothing?")
+		self.pants = Item.Armor("pants", "Old Pants", 1, 0.5, 10, "Old pants made from linen.\nThey're dirty.")
+		self.weapon = Item.Weapon("Broken Twig", 1, 1, 0.5, "A small twig you found on the floor")
+		#self.weapon = Item.Empty()
 
 		self.spells = []
 
